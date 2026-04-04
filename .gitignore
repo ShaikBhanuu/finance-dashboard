@@ -32,4 +32,4 @@ build/
 ### VS Code ###
 .vscode/
 ### yaml file ###
-application.yml
+application.yaml
