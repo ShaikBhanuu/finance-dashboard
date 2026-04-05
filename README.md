@@ -45,6 +45,133 @@ App auto-creates the database, tables, and 3 seed users on first run.
 | Create, update, delete transactions | No     | No      | Yes   |
 | Manage users and roles              | No     | No      | Yes   |
 
+## API Reference
+
+### Auth
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | /api/auth/register | No | Register new user (assigned VIEWER role) |
+| POST | /api/auth/login | No | Login and receive JWT token |
+
+**Register request:**
+```json
+{
+  "username": "john",
+  "email": "john@example.com",
+  "password": "secret123"
+}
+```
+
+**Login request:**
+```json
+{
+  "username": "admin",
+  "password": "password"
+}
+```
+
+**Login response:**
+```json
+{
+  "token": "eyJhbGci...",
+  "username": "admin",
+  "role": "ADMIN"
+}
+```
+
+---
+
+### Transactions
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| POST | /api/transactions | ADMIN | Create transaction |
+| GET | /api/transactions | Any | Get all transactions |
+| GET | /api/transactions/{id} | Any | Get transaction by ID |
+| PUT | /api/transactions/{id} | ADMIN | Update transaction |
+| DELETE | /api/transactions/{id} | ADMIN | Delete transaction |
+| GET | /api/transactions/filter | Any | Filter transactions |
+
+**Create/Update request:**
+```json
+{
+  "amount": 50000.00,
+  "type": "INCOME",
+  "category": "Salary",
+  "description": "Monthly salary",
+  "date": "2026-04-01"
+}
+```
+
+**Transaction response:**
+```json
+{
+  "id": 1,
+  "amount": 50000.00,
+  "type": "INCOME",
+  "category": "Salary",
+  "description": "Monthly salary",
+  "date": "2026-04-01",
+  "createdAt": "2026-04-04T15:30:27",
+  "username": "admin"
+}
+```
+
+**Filter params:** `?type=INCOME&category=Salary&start=2026-01-01&end=2026-04-30`
+All params are optional and can be combined.
+
+---
+
+### Dashboard
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | /api/dashboard/summary | ANALYST, ADMIN | Total income, expenses, net balance, by category |
+| GET | /api/dashboard/trends | ANALYST, ADMIN | Monthly totals by type and year |
+
+**Summary response:**
+```json
+{
+  "totalIncome": 100000.00,
+  "totalExpenses": 20000.00,
+  "netBalance": 80000.00,
+  "incomeByCategory": { "Salary": 100000.00 },
+  "expenseByCategory": { "Food": 20000.00 }
+}
+```
+
+**Trends params:** `?type=INCOME&year=2026`
+
+---
+
+### Users
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | /api/users | ADMIN | Get all users |
+| GET | /api/users/{id} | ADMIN | Get user by ID |
+| PUT | /api/users/{id}/role | ADMIN | Update user role |
+| PUT | /api/users/{id}/status | ADMIN | Activate or deactivate user |
+
+**Update role request:**
+```json
+{ "role": "ANALYST" }
+```
+
+**Update status request:**
+```json
+{ "active": false }
+```
+
+**User response:**
+```json
+{
+  "id": 1,
+  "username": "admin",
+  "email": "admin@zorvyn.com",
+  "role": "ADMIN",
+  "active": true,
+  "createdAt": "2026-04-04T18:07:56"
+}
+```
+## Testing
 #### Windows (PowerShell)
 ```powershell
 # Login
@@ -86,7 +213,24 @@ curl -X GET http://localhost:8080/api/dashboard/summary \
 - JWT stateless auth — scales better than server-side sessions
 - SQL aggregations for dashboard — SUM and GROUP BY run in the database, not Java loops
 - Seed data — 3 users preloaded covering all roles so reviewer can test immediately
+---
 
+## Tradeoffs
+
+- **Spring Boot 3.3.6 over latest** — chosen for Springdoc Swagger UI compatibility.
+  Latest Spring Boot 3.5.x has a known incompatibility with Springdoc that prevents
+  Swagger UI from rendering API documentation correctly.
+
+- **Hard delete over soft delete** — simpler implementation for this scope.
+  Production systems handling financial data should use soft delete with a deleted_at
+  timestamp to maintain complete audit trails.
+
+- **Single database over microservices** — appropriate for this scale.
+  A real finance system might separate user management and transaction services,
+  but for this assignment a monolithic approach keeps complexity manageable.
+
+- **In-memory seed data over migration tool** — used data.sql for simplicity.
+  Production would use Flyway or Liquibase for versioned database migrations.
 ## Assumptions
 - Registered users get VIEWER role by default. Only ADMIN can upgrade roles.
 - Hard delete used for simplicity. Production would use soft delete for audit trails.
